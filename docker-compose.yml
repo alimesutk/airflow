@@ -1,0 +1,63 @@
+version: '3.8'
+services:
+    postgres: # Airflow metadasının tutulduğu db'dir.
+        image: postgres
+        environment:
+            - POSTGRES_USER=airflow
+            - POSTGRES_PASSWORD=airflow
+            - POSTGRES_DB=airflow
+    scheduler: # İlk çalıştırldıktan sonra oluşan scheduler container'ı "docker start <container_id>" ile tekrar start edilmelidir.
+        image: apache/airflow
+        command: scheduler
+        depends_on:
+            - postgres
+        env_file:
+            - .env # Connection SQLAlchemy tanımı ve Executor değişkeni yer alır.
+        volumes: # Localde mount edilecek dosya yolları.
+            - ./dags:/opt/airflow/dags
+            - ./logs:/opt/airflow/logs
+            - ./python_scripts:/opt/airflow/python_scripts
+            - ./datasets:/opt/airflow/datasets
+            - ./venv:/opt/airflow/venv
+    webserver:
+        image: apache/airflow
+        entrypoint: ./scripts/entrypoint.sh # İçeriğinde dbinit, user create ve web server start komutları yer alır
+        depends_on:
+            - postgres
+            - scheduler
+        env_file:
+            - .env
+        volumes: # Localde mount edilecek dosya yolları.
+            - ./dags:/opt/airflow/dags
+            - ./logs:/opt/airflow/logs
+            - ./scripts:/opt/airflow/scripts
+            - ./python_scripts:/opt/airflow/python_scripts
+            - ./datasets:/opt/airflow/datasets
+            - ./venv:/opt/airflow/venv
+        ports:
+            - "8080:8080"
+    db:
+        image: postgres:12.2
+        container_name: postgre_db
+        restart: always
+        environment:
+            POSTGRES_DB: postgres
+            POSTGRES_USER: admin
+            POSTGRES_PASSWORD: secret
+            PGDATA: /var/lib/postgresql/data
+        ports:
+            - "54332:5432" # Docker içindeki port 5432 dışarı açılan port 54332 olarak tanımlandı.
+    pgadmin:
+        image: dpage/pgadmin4:4.29
+        container_name: postgre_pgadmin
+        restart: always
+        environment:
+            PGADMIN_DEFAULT_EMAIL: ali@mesut.com
+            PGADMIN_DEFAULT_PASSWORD: secret
+            PGADMIN_LISTEN_PORT: 8090
+        ports:
+            - "8090:8090"
+        links:
+            - "db:pgsql-server" # pgadmin>connection>Host name/address
+
+  
