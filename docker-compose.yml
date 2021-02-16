@@ -1,3 +1,9 @@
+# volumes'te yer alan pathlerin başındaki ./ docker-compose'un bulunduğu dizini gösterir.
+# Sürekli exited olan bir container ya volume'te geçen bir dizine yetki olmadığından ya da restart ihtiyacı olduğundan dolatı exited olur. 
+#   1. durum için klasörlere recursively yetki 
+#   2. durum için ise restart parametresi tanımlamak yeteli olacaktır. (restart: [no, always, unless-stopped, on-failure])
+# Hata detayını görmek için docker logs <container_id> içinden error kısımlarına bakılmalıdır. 
+
 version: '3.8'
 services:
     postgres: # Airflow metadasının tutulduğu db'dir.
@@ -9,6 +15,7 @@ services:
     scheduler: # İlk çalıştırldıktan sonra oluşan scheduler container'ı "docker start <container_id>" ile tekrar start edilmelidir.
         image: apache/airflow
         command: scheduler
+        restart: unless-stopped
         depends_on:
             - postgres
         env_file:
@@ -22,6 +29,7 @@ services:
     webserver:
         image: apache/airflow
         entrypoint: ./scripts/entrypoint.sh # İçeriğinde dbinit, user create ve web server start komutları yer alır
+        restart: unless-stopped
         depends_on:
             - postgres
             - scheduler
